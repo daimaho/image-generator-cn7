@@ -1,0 +1,15 @@
+{
+  "name": "image-generator-cn7",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "node-fetch": "^3.3.2",
+    "sharp": "^0.33.4",
+    "canvas": "^2.11.2"
+  }
+}
