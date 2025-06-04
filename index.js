@@ -1,33 +1,12 @@
 import express from 'express';
-import fetch from 'node-fetch';
+import axios from 'axios';
 import { createCanvas, loadImage, registerFont } from 'canvas';
 import sharp from 'sharp';
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Captura y log de rawBody para debugging
-app.use((req, res, next) => {
-  let rawData = '';
-  req.on('data', chunk => rawData += chunk);
-  req.on('end', () => {
-    console.log('RAW BODY:', rawData);
-    next();
-  });
-});
-
-// Intenta parsear JSON con manejo de errores
-app.use(express.json({
-  strict: true,
-  verify: (req, res, buf) => {
-    try {
-      JSON.parse(buf.toString());
-    } catch (e) {
-      throw new Error('Invalid JSON');
-    }
-  }
-}));
-
+app.use(express.json());
 registerFont('Roboto-Bold.ttf', { family: 'Roboto' });
 
 app.post('/generate', async (req, res) => {
@@ -37,7 +16,11 @@ app.post('/generate', async (req, res) => {
 
   try {
     const bg = await loadImage('./fondo.jpg');
-    const img = await loadImage(image_url);
+
+    // Descargar la imagen desde la URL
+    const response = await axios.get(image_url, { responseType: 'arraybuffer' });
+    const imageBuffer = Buffer.from(response.data);
+    const img = await loadImage(imageBuffer);
 
     const canvas = createCanvas(1080, 1350);
     const ctx = canvas.getContext('2d');
