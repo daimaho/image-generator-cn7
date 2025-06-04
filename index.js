@@ -1,65 +1,37 @@
 import express from 'express';
 import axios from 'axios';
-import { createCanvas, loadImage, registerFont } from 'canvas';
-import sharp from 'sharp';
+import bodyParser from 'body-parser';
 
 const app = express();
-const port = process.env.PORT || 3000;
+app.use(bodyParser.json());
 
-app.use(express.json());
-registerFont('Roboto-Bold.ttf', { family: 'Roboto' });
-
-app.post('/generate', async (req, res) => {
-  const { title, image_url } = req.body;
-
-  if (!title || !image_url) return res.status(400).send('Falta title o image_url');
-
+app.post('/generate-image', async (req, res) => {
   try {
-    const bg = await loadImage('./fondo.jpg');
+    const { prompt } = req.body;
 
-    // Descargar la imagen desde la URL
-    const response = await axios.get(image_url, { responseType: 'arraybuffer' });
-    const imageBuffer = Buffer.from(response.data);
-    const img = await loadImage(imageBuffer);
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt is required' });
+    }
 
-    const canvas = createCanvas(1080, 1350);
-    const ctx = canvas.getContext('2d');
-
-    ctx.drawImage(bg, 0, 0, 1080, 1350);
-    ctx.drawImage(img, 65, 100, 950, 750);
-
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 54px Roboto';
-    ctx.textAlign = 'center';
-    const lines = wrapText(ctx, title, 951);
-    lines.forEach((line, i) => {
-      ctx.fillText(line, 540, 1000 + i * 65);
+    const response = await axios.post('https://api.openai.com/v1/images/generations', {
+      prompt,
+      n: 1,
+      size: '1024x1024',
+    }, {
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
     });
 
-    const buffer = canvas.toBuffer('image/png');
-    const output = await sharp(buffer).jpeg().toBuffer();
-    res.set('Content-Type', 'image/jpeg').send(output);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('Error generando la imagen');
+    res.json({ imageUrl: response.data.data[0].url });
+  } catch (error) {
+    console.error(error.response?.data || error.message);
+    res.status(500).json({ error: 'Image generation failed' });
   }
 });
 
-function wrapText(ctx, text, maxWidth) {
-  const words = text.split(' ');
-  const lines = [];
-  let line = '';
-  for (const word of words) {
-    const test = line + word + ' ';
-    if (ctx.measureText(test).width > maxWidth) {
-      lines.push(line.trim());
-      line = word + ' ';
-    } else {
-      line = test;
-    }
-  }
-  lines.push(line.trim());
-  return lines;
-}
-
-app.listen(port, () => console.log(`Servidor en ${port}`));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
