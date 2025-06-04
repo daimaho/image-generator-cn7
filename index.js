@@ -6,7 +6,28 @@ import sharp from 'sharp';
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(express.json());
+// Captura y log de rawBody para debugging
+app.use((req, res, next) => {
+  let rawData = '';
+  req.on('data', chunk => rawData += chunk);
+  req.on('end', () => {
+    console.log('RAW BODY:', rawData);
+    next();
+  });
+});
+
+// Intenta parsear JSON con manejo de errores
+app.use(express.json({
+  strict: true,
+  verify: (req, res, buf) => {
+    try {
+      JSON.parse(buf.toString());
+    } catch (e) {
+      throw new Error('Invalid JSON');
+    }
+  }
+}));
+
 registerFont('Roboto-Bold.ttf', { family: 'Roboto' });
 
 app.post('/generate', async (req, res) => {
